@@ -37,8 +37,11 @@ void driver(const char* filename) {
 
 static void print_help(const char* argv[]) {
     printf("Usage: %s [--help|--version]\n"
-           "   or: %s [FILE...]\n", argv[0],
-           argv[0]);
+           "   or: %s [FILE...]\n"
+           "\n"
+           "Verbatim dumps 64-bit Mach-O object files for low-level "
+           "debugging.\n",
+           argv[0], argv[0]);
 }
 
 static void print_version(void) {

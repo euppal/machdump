@@ -17,6 +17,7 @@
 #include "dump.h"
 #include "safe.h"
 #include <mach-o/loader.h>
+#include <mach-o/nlist.h>
 
 #define S(...) struct __VA_ARGS__
 #define START_READ() size_t __CUR = 0
@@ -28,7 +29,7 @@
 
 #define local static inline
 
-local void dump_header(S(mach_header_64)* header) {
+local void dump_header(void* buffer, S(mach_header_64)* header) {
     printf("│ Header\n");
     printf("└─┐ Magic: 0x%08x\n", header->magic);
     
@@ -71,8 +72,8 @@ local void dump_header(S(mach_header_64)* header) {
     
     printf("  │ Number of load commands: %u\n", header->ncmds);
     printf("  │ Size of load commands: %u byte(s)\n", header->sizeofcmds);
-    
-    printf("  │ Flags: 0x%08x:", header->flags);
+
+    printf("┌─┘ Flags: 0x%08x:", header->flags);
     if (header->flags == MH_NOUNDEFS) {
         printf(" MH_NOUNDEFS");
     }
@@ -121,7 +122,7 @@ local void dump_header(S(mach_header_64)* header) {
     fputc('\n', stdout);
 }
 
-local void dump_section_64(S(section_64*) sec64) {
+local void dump_section_64(void* buffer, S(section_64*) sec64) {
     printf("  │ Section 64: struct section_64\n");
     printf("  └─┐ Section Name: %.16s\n", sec64->sectname);
     printf("    │ Segment Name: %.16s\n", sec64->segname);
@@ -132,11 +133,10 @@ local void dump_section_64(S(section_64*) sec64) {
     printf("    │ File offset of first relocation entry: 0x%08x\n",
            sec64->reloff);
     printf("    │ Number of first relocation entries: %u\n", sec64->nreloc);
-    printf("    │ Flags: %08x\n", sec64->flags);
-    printf("  ┌─┘\n");
+    printf("  ┌─┘ Flags: %08x\n", sec64->flags);
 }
 
-local void dump_segment_64(S(segment_command_64*) seg64) {
+local void dump_segment_64(void* buffer, S(segment_command_64*) seg64) {
     printf("  │ Command Size: %u byte(s)\n", seg64->cmdsize);
     printf("  │ Segment Name: %.16s\n", seg64->segname);
     printf("  │ Virtual Memory Address: 0x%016llx\n", seg64->vmaddr);
@@ -147,7 +147,12 @@ local void dump_segment_64(S(segment_command_64*) seg64) {
     printf("  │ Initial Virtual Memory Protection: %08x\n", seg64->initprot);
     printf("  │ Number of sections: %u\n", seg64->nsects);
     
-    printf("  │ Flags: %08x:", seg64->flags);
+    if (seg64->nsects > 0) {
+        printf("  │ ");
+    } else {
+        printf("┌─┘ ");
+    }
+    printf("Flags: %08x:", seg64->flags);
     if (seg64->flags & SG_HIGHVM) {
         printf(" SG_HIGHVM");
     }
@@ -163,14 +168,76 @@ local void dump_segment_64(S(segment_command_64*) seg64) {
     for (uint32_t i = 0; i < seg64->nsects; i++) {
         S(section_64*) section = (void*)sections;
         sections += section->size;
-        dump_section_64(section);
+        dump_section_64(buffer, section);
     }
+    printf("┌─┘\n");
 }
 
-local void dump_load_command(S(load_command*) load_command) {
+local void dumo_nlist64_elem(void* buffer, S(nlist_64*) elem) {
+    printf("  │ Symbol: struct nlist_64\n");
+    printf("  └─┐ Index in String Table: %u\n", elem->n_un.n_strx);
+    printf("    │ Type: 0x%02x\n", elem->n_type);
+    printf("    │ Section Location: %u (starting from 1)\n", elem->n_sect);
+    printf("  ┌─┘ Description: 0x%04x\n", elem->n_desc);
+}
+
+local void dump_symbol_table(void* buffer, S(symtab_command*) symt) {
+    printf("  │ Command Size: %u byte(s)\n", symt->cmdsize);
+    printf("  │ Symbol Table Offset: %u byte(s)\n", symt->symoff);
+    printf("  │ Number of Symbols: %u\n", symt->nsyms);
+    printf("  │ String Table Offset: %u byte(s)\n", symt->stroff);
+    if (symt->nsyms > 0) {
+        printf("  │ ");
+    } else {
+        printf("┌─┘ ");
+    }
+    printf("String Table Size: %u byte(s)\n", symt->strsize);
+    S(nlist_64*) syms = (void*)((char*)buffer + symt->symoff);
+    for (uint32_t i = 0; i < symt->nsyms; i++) {
+        dumo_nlist64_elem(buffer, syms + i);
+    }
     printf("┌─┘\n");
-    printf("│ Load Command\n");
-    printf("└─┐ Command Type: %08x: ", load_command->cmd);
+}
+
+local void dump_dysym_table(void* buffer, S(dysymtab_command*) dsymt) {
+    printf("  │ Command Size: %u byte(s)\n", dsymt->cmdsize);
+    printf("  │ Index of first local symbol: %u\n", dsymt->ilocalsym);
+    printf("  │ Number of local symbols: %u\n", dsymt->nlocalsym);
+    printf("  │ Index of first external symbol: %u\n", dsymt->iextdefsym);
+    printf("  │ Number of external symbols: %u\n", dsymt->nextdefsym);
+    printf("  │ Index of first undefined external symbol: %u\n",
+           dsymt->iundefsym);
+    printf("  │ Number of undefined external symbols: %u\n", dsymt->nundefsym);
+    printf("  │ File offset of table of contents: %u\n", dsymt->tocoff);
+    printf("  │ Number of entries in table of contents: %u\n", dsymt->ntoc);
+    printf("  │ File offset of module table: %u\n", dsymt->modtaboff);
+    printf("  │ Number of entries in module table: %u\n", dsymt->nmodtab);
+    printf("  │ File offset of external reference table: %u\n",
+           dsymt->extrefsymoff);
+    printf("  │ Number of entries in external reference table: %u\n",
+           dsymt->nextrefsyms);
+    printf("  │ File offset of indirect symbol table: %u\n",
+           dsymt->indirectsymoff);
+    printf("  │ Number of entries in indirect symbol table: %u\n",
+           dsymt->nindirectsyms);
+    printf("  │ File offset of external relocation table: %u\n",
+           dsymt->extreloff);
+    printf("  │ Number of entries in external relocation table: %u\n",
+           dsymt->nextrel);
+    printf("  │ File offset of local relocation table: %u\n", dsymt->locreloff);
+    printf("┌─┘ Number of entries in local relocation table: %u\n",
+           dsymt->nlocrel);
+//    if (symt->nsyms > 0) {
+//        printf("  │ ");
+//    } else {
+//        printf("┌─┘ ");
+//    }
+//    printf("┌─┘\n");
+}
+
+local void dump_load_command(void* buffer, S(load_command*) load_command) {
+    printf("│ Load Command (at offset 0x%016lx)\n", (void*)load_command - buffer);
+    printf("└─┐ Command Type: 0x%08x: ", load_command->cmd);
     
     if (load_command->cmd == LC_UUID) {
         printf("LC_UUID: struct uuid_command\n");
@@ -178,11 +245,13 @@ local void dump_load_command(S(load_command*) load_command) {
         printf("LC_SEGMENT: struct segment_command\n");
     } else if (load_command->cmd == LC_SEGMENT_64) {
         printf("LC_SEGMENT_64: struct segment_command_64\n");
-        dump_segment_64((S(segment_command_64*))load_command);
+        dump_segment_64(buffer, (S(segment_command_64*))load_command);
     } else if (load_command->cmd == LC_SYMTAB) {
         printf("LC_SYMTAB: struct symtab_command\n");
+        dump_symbol_table(buffer, (S(symtab_command*))load_command);
     } else if (load_command->cmd == LC_DYSYMTAB) {
         printf("LC_DYSYMTAB: struct dysymtab_command\n");
+        dump_dysym_table(buffer, (S(dysymtab_command*))load_command);
     } else if (load_command->cmd == LC_THREAD) {
         printf("LC_THREAD: struct thread_command\n");
     } else if (load_command->cmd == LC_UNIXTHREAD) {
@@ -218,7 +287,7 @@ local void dump_load_command(S(load_command*) load_command) {
     }
     #endif
     else {
-        printf("Unknown\n");
+        printf("\r├── Command Type: Unknown\n");
     }
 }
 
@@ -226,11 +295,11 @@ void mach_dump(void* buffer, const size_t length) {
     START_READ();
     
     S(mach_header_64*) header = READ(sizeof(*header));
-    dump_header(header);
+    dump_header(buffer, header);
     
     for (uint32_t i = 0; i < header->ncmds; i++) {
         S(load_command*) load_command = READ(sizeof(*load_command));
         CONSUME(load_command->cmdsize - sizeof(*load_command));
-        dump_load_command(load_command);
+        dump_load_command(buffer, load_command);
     }
 }
