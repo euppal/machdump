@@ -18,5 +18,5 @@ $CC -Iinclude src/*.c -O2 -o machdump machdump
 ```
 You can then install machdump with
 ```
-
+sudo cp machdump /usr/local/bin/machdump
 ```
