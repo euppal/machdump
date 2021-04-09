@@ -133,7 +133,18 @@ local void dump_section_64(void* buffer, S(section_64*) sec64) {
     printf("    │ File offset of first relocation entry: 0x%08x\n",
            sec64->reloff);
     printf("    │ Number of first relocation entries: %u\n", sec64->nreloc);
-    printf("  ┌─┘ Flags: %08x\n", sec64->flags);
+    printf("    │ Flags: %08x\n", sec64->flags);
+    printf("  ┌─┘ Assembly:");
+    for (uint64_t i = 0; i < sec64->size; i++) {
+        const unsigned char byte = ((char*)buffer + sec64->offset)[i];
+        if (sec64->size > 16 && i > 4 && i < sec64->size - 4) {
+            i = sec64->size - 4;
+            printf(" ...");
+        } else {
+            printf(" 0x%02x", (uint32_t)byte);
+        }
+    }
+    fputc('\n', stdout);
 }
 
 local void dump_segment_64(void* buffer, S(segment_command_64*) seg64) {
@@ -281,6 +292,7 @@ local void dump_load_command(void* buffer, S(load_command*) load_command) {
     } else if (load_command->cmd == LC_SUB_CLIENT) {
         printf("LC_SUB_CLIENT: struct sub_client_command\n");
     }
+    
     #ifdef LC_SYMSEG
     else if (load_command->cmd == LC_SYMSEG) {
         printf("LC_SYMSEG: struct symseg_command\n");
