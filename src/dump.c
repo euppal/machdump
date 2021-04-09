@@ -27,6 +27,8 @@
 } while (0)
 #define CONSUME(n) __CUR += (n)
 
+#define PRINT_FLAG(flags, flag) if ((flags) & (flag)) printf(" " #flag)
+
 #define local static inline
 
 local void dump_header(void* buffer, S(mach_header_64)* header) {
@@ -64,58 +66,32 @@ local void dump_header(void* buffer, S(mach_header_64)* header) {
         printf("MH_PRELOAD: Special Executable Program\n");
     } else if (header->filetype == MH_CORE) {
         printf("MH_CORE: Core File\n");
-    } else if (header->filetype & MH_DYLINKER) {
+    } else if (header->filetype == MH_DYLINKER) {
         printf("MH_DYLINKER: Dynamic Linker Shared Library\n");
-    } else if (header->filetype & MH_DSYM) {
+    } else if (header->filetype == MH_DSYM) {
         printf("MH_DSYM: Symbol Information File\n");
+    } else {
+        printf("Unknown file type\n");
     }
     
     printf("  │ Number of load commands: %u\n", header->ncmds);
     printf("  │ Size of load commands: %u byte(s)\n", header->sizeofcmds);
 
     printf("┌─┘ Flags: 0x%08x:", header->flags);
-    if (header->flags == MH_NOUNDEFS) {
-        printf(" MH_NOUNDEFS");
-    }
-    if (header->flags & MH_INCRLINK) {
-        printf(" MH_INCRLINK");
-    }
-    if (header->flags & MH_DYLDLINK) {
-        printf(" MH_DYLDLINK");
-    }
-    if (header->flags & MH_TWOLEVEL) {
-        printf(" MH_TWOLEVEL");
-    }
-    if (header->flags & MH_BINDATLOAD) {
-        printf(" MH_BINDATLOAD");
-    }
-    if (header->flags & MH_PREBOUND) {
-        printf(" MH_PREBOUND");
-    }
-    if (header->flags & MH_PREBINDABLE) {
-        printf(" MH_PREBINDABLE\n");
-    }
-    if (header->flags & MH_NOFIXPREBINDING) {
-        printf(" MH_NOFIXPREBINDING");
-    }
-    if (header->flags & MH_ALLMODSBOUND) {
-        printf(" MH_ALLMODSBOUND");
-    }
-    if (header->flags & MH_CANONICAL) {
-        printf(" MH_CANONICAL");
-    }
-    if (header->flags & MH_SPLIT_SEGS) {
-        printf(" MH_SPLIT_SEGS");
-    }
-    if (header->flags & MH_FORCE_FLAT) {
-        printf(" MH_FORCE_FLAT");
-    }
-    if (header->flags & MH_SUBSECTIONS_VIA_SYMBOLS) {
-        printf(" MH_SUBSECTIONS_VIA_SYMBOLS");
-    }
-    if (header->flags & MH_NOMULTIDEFS) {
-        printf(" MH_NOMULTIDEFS");
-    }
+    PRINT_FLAG(header->flags, MH_NOUNDEFS);
+    PRINT_FLAG(header->flags, MH_INCRLINK);
+    PRINT_FLAG(header->flags, MH_DYLDLINK);
+    PRINT_FLAG(header->flags, MH_TWOLEVEL);
+    PRINT_FLAG(header->flags, MH_BINDATLOAD);
+    PRINT_FLAG(header->flags, MH_PREBOUND);
+    PRINT_FLAG(header->flags, MH_PREBINDABLE);
+    PRINT_FLAG(header->flags, MH_NOFIXPREBINDING);
+    PRINT_FLAG(header->flags, MH_ALLMODSBOUND);
+    PRINT_FLAG(header->flags, MH_CANONICAL);
+    PRINT_FLAG(header->flags, MH_SPLIT_SEGS);
+    PRINT_FLAG(header->flags, MH_FORCE_FLAT);
+    PRINT_FLAG(header->flags, MH_SUBSECTIONS_VIA_SYMBOLS);
+    PRINT_FLAG(header->flags, MH_NOMULTIDEFS);
     if (header->flags == 0) {
         printf(" None");
     }
@@ -133,7 +109,32 @@ local void dump_section_64(void* buffer, S(section_64*) sec64) {
     printf("    │ File offset of first relocation entry: 0x%08x\n",
            sec64->reloff);
     printf("    │ Number of first relocation entries: %u\n", sec64->nreloc);
-    printf("    │ Flags: %08x\n", sec64->flags);
+    printf("    │ Flags: %08x:", sec64->flags);
+    PRINT_FLAG(sec64->flags, S_REGULAR);
+    PRINT_FLAG(sec64->flags, S_ZEROFILL);
+    PRINT_FLAG(sec64->flags, S_CSTRING_LITERALS);
+    PRINT_FLAG(sec64->flags, S_4BYTE_LITERALS);
+    PRINT_FLAG(sec64->flags, S_8BYTE_LITERALS);
+    PRINT_FLAG(sec64->flags, S_LITERAL_POINTERS);
+    PRINT_FLAG(sec64->flags, S_NON_LAZY_SYMBOL_POINTERS);
+    PRINT_FLAG(sec64->flags, S_LAZY_SYMBOL_POINTERS);
+    PRINT_FLAG(sec64->flags, S_SYMBOL_STUBS);
+    PRINT_FLAG(sec64->flags, S_MOD_INIT_FUNC_POINTERS);
+    PRINT_FLAG(sec64->flags, S_MOD_TERM_FUNC_POINTERS);
+    PRINT_FLAG(sec64->flags, S_COALESCED);
+    PRINT_FLAG(sec64->flags, S_GB_ZEROFILL);
+    PRINT_FLAG(sec64->flags, S_ATTR_PURE_INSTRUCTIONS);
+    PRINT_FLAG(sec64->flags, S_ATTR_SOME_INSTRUCTIONS);
+    PRINT_FLAG(sec64->flags, S_ATTR_NO_TOC);
+    PRINT_FLAG(sec64->flags, S_ATTR_EXT_RELOC);
+    PRINT_FLAG(sec64->flags, S_ATTR_LOC_RELOC);
+    PRINT_FLAG(sec64->flags, S_ATTR_STRIP_STATIC_SYMS);
+    PRINT_FLAG(sec64->flags, S_ATTR_NO_DEAD_STRIP);
+    PRINT_FLAG(sec64->flags, S_ATTR_LIVE_SUPPORT);
+    if (sec64->flags == 0) {
+        printf("None");
+    }
+    fputc('\n', stdout);
     printf("  ┌─┘ Assembly:");
     for (uint64_t i = 0; i < sec64->size; i++) {
         const unsigned char byte = ((char*)buffer + sec64->offset)[i];
@@ -187,9 +188,34 @@ local void dump_segment_64(void* buffer, S(segment_command_64*) seg64) {
 local void dumo_nlist64_elem(void* buffer, S(nlist_64*) elem) {
     printf("  │ Symbol: struct nlist_64\n");
     printf("  └─┐ Index in String Table: %u\n", elem->n_un.n_strx);
-    printf("    │ Type: 0x%02x\n", elem->n_type);
-    printf("    │ Section Location: %u (starting from 1)\n", elem->n_sect);
+    printf("    │ Type: 0x%02x: ", elem->n_type);
+    if (elem->n_type & N_STAB) {
+        printf(" N_STAB(Symbolic Debugging Entry)");
+    }
+    if (elem->n_type & N_PEXT) {
+        printf(" N_PEXT(Private External Symbol)");
+    }
+    if (elem->n_type & N_EXT) {
+        printf(" N_EXT(External Symbol)");
+    }
+    if (elem->n_type == N_UNDF) {
+        printf(" N_UNDF(Undefined)");
+    }
+    if (elem->n_type & N_ABS) {
+        printf(" N_ABS(Absolute)");
+    }
+    if (elem->n_type & N_INDR) {
+        printf(" N_INDR(Indirect)");
+    }
+    fputc('\n', stdout);
+    printf("    │ Section Location: ");
+    if (elem->n_sect > 0) {
+        printf("%u (from 1)\n", elem->n_sect);
+    } else {
+        printf("NO_SECT\n");
+    }
     printf("  ┌─┘ Description: 0x%04x\n", elem->n_desc);
+    
 }
 
 local void dump_symbol_table(void* buffer, S(symtab_command*) symt) {
