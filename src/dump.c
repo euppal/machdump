@@ -27,7 +27,10 @@
 } while (0)
 #define CONSUME(n) __CUR += (n)
 
-#define PRINT_FLAG(flags, flag) if ((flags) & (flag)) printf(" " #flag)
+#define PRINT_FLAG(flags, flag) \
+    if ((flags) & (flag)) printf(" " #flag)
+#define PRINT_OPTION(value, instance) \
+    if ((value) == (instance)) printf(#value "\n")
 
 #define local static inline
 
@@ -272,6 +275,16 @@ local void dump_dysym_table(void* buffer, S(dysymtab_command*) dsymt) {
 //    printf("┌─┘\n");
 }
 
+local void dump_build_version(void* buffer, S(build_version_command*) bver) {
+    printf("  │ Command Size: %u byte(s)\n", bver->cmdsize);
+    printf("  │ Platform: 0x%08x\n", bver->platform);
+    printf("  │ Minimum OS: 0x%08x: %u.%u.%u\n", bver->minos, bver->minos >> 16,
+           bver->minos >> 8 & 0xFF, bver->minos & 0xFF);
+    printf("  │ Minimum SDK: 0x%08x: %u.%u.%u\n", bver->sdk, bver->sdk >> 16,
+           bver->sdk >> 8 & 0xFF, bver->sdk & 0xFF);
+    printf("┌─┘ Number of build tools: %u\n", bver->ntools);
+}
+
 local void dump_load_command(void* buffer, S(load_command*) load_command) {
     printf("│ Load Command (at offset 0x%016lx)\n", (void*)load_command - buffer);
     printf("└─┐ Command Type: 0x%08x: ", load_command->cmd);
@@ -317,6 +330,21 @@ local void dump_load_command(void* buffer, S(load_command*) load_command) {
         printf("LC_SUB_LIBRARY: struct sub_library_command\n");
     } else if (load_command->cmd == LC_SUB_CLIENT) {
         printf("LC_SUB_CLIENT: struct sub_client_command\n");
+    } else if (load_command->cmd == LC_DYLD_INFO_ONLY) {
+        printf("LC_DYLD_INFO_ONLY\n");
+    } else if (load_command->cmd == LC_VERSION_MIN_MACOSX) {
+        printf("LC_VERSION_MIN_MACOSX: struct version_min_command\n");
+    } else if (load_command->cmd == LC_SOURCE_VERSION) {
+        printf("LC_SOURCE_VERSION: struct source_version_command\n");
+    } else if (load_command->cmd == LC_MAIN) {
+        printf("LC_MAIN\n");
+    } else if (load_command->cmd == LC_FUNCTION_STARTS) {
+        printf("FUNCTION_STARTS\n");
+    } else if (load_command->cmd == LC_LAZY_LOAD_DYLIB) {
+        printf("LC_LAZY_LOAD_DYLIB\n");
+    } else if (load_command->cmd == LC_BUILD_VERSION) {
+        printf("LC_BUILD_VERSION: struct build_version_command\n");
+        dump_build_version(buffer, (S(build_version_command*))load_command);
     }
     
     #ifdef LC_SYMSEG
@@ -325,7 +353,7 @@ local void dump_load_command(void* buffer, S(load_command*) load_command) {
     }
     #endif
     else {
-        printf("\r├── Command Type: Unknown\n");
+        printf("Unknown\r├──\n");
     }
 }
 
