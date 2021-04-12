@@ -10,13 +10,13 @@ Simply give it one or more mach-on files on the command and it will dump each. I
 
 ## Usage
 
-I could not be bothered to write a makefile since compiling this is as simple as:
+You can easily use this by cloning and making:
 ```bash
 git clone https://github.com/euppal/machdump
 cd machdump
-$CC -Iinclude src/*.c -O2 -o machdump machdump
+make
 ```
-You can then install machdump with
+You can then install machdump with:
 ```bash
-sudo cp machdump /usr/local/bin/machdump
+sudo cp machdump /usr/local/bin
 ```

@@ -1,0 +1,3 @@
+[submodule "libtermcolor"]
+	path = libtermcolor
+	url = https://github.com/euppal/libtermcolor

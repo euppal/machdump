@@ -16,6 +16,8 @@
 
 #include "dump.h"
 #include "safe.h"
+#include "termcolor.h"
+#define printf tcol_printf
 #include <mach-o/loader.h>
 #include <mach-o/nlist.h>
 
@@ -29,10 +31,22 @@
 
 #define PRINT_FLAG(flags, flag) \
     if ((flags) & (flag)) printf(" " #flag)
+#define PRINT_FLAG_EXT(flags, flag, extra) \
+    if ((flags) & (flag)) printf(" " #flag extra)
 #define PRINT_OPTION(value, instance) \
     if ((value) == (instance)) printf(#value "\n")
 
 #define local static inline
+
+local const char* argz_get_string(const char* start, size_t index) {
+    const char* next = start;
+    while (index > 0) {
+        while (*next++);
+        start = next + 1;
+        index--;
+    };
+    return start;
+}
 
 local void dump_header(void* buffer, S(mach_header_64)* header) {
     printf("│ Header\n");
@@ -168,12 +182,8 @@ local void dump_segment_64(void* buffer, S(segment_command_64*) seg64) {
         printf("┌─┘ ");
     }
     printf("Flags: %08x:", seg64->flags);
-    if (seg64->flags & SG_HIGHVM) {
-        printf(" SG_HIGHVM");
-    }
-    if (seg64->flags & SG_NORELOC) {
-        printf(" SG_NORELOC");
-    }
+    PRINT_FLAG(seg64->flags, SG_HIGHVM);
+    PRINT_FLAG(seg64->flags, SG_NORELOC);
     if (seg64->flags == 0) {
         printf(" None");
     }
@@ -188,28 +198,21 @@ local void dump_segment_64(void* buffer, S(segment_command_64*) seg64) {
     printf("┌─┘\n");
 }
 
-local void dumo_nlist64_elem(void* buffer, S(nlist_64*) elem) {
+local void dumo_nlist64_elem(void* buffer, S(nlist_64*) elem,
+                             const char* symtable) {
     printf("  │ Symbol: struct nlist_64\n");
     printf("  └─┐ Index in String Table: %u\n", elem->n_un.n_strx);
-    printf("    │ Type: 0x%02x: ", elem->n_type);
-    if (elem->n_type & N_STAB) {
-        printf(" N_STAB(Symbolic Debugging Entry)");
-    }
-    if (elem->n_type & N_PEXT) {
-        printf(" N_PEXT(Private External Symbol)");
-    }
-    if (elem->n_type & N_EXT) {
-        printf(" N_EXT(External Symbol)");
-    }
+    printf("    │ Type: 0x%02x:", elem->n_type);
+    PRINT_FLAG_EXT(elem->n_type, N_STAB, "(Symbolic Debugging Entry)");
+    PRINT_FLAG_EXT(elem->n_type, N_PEXT, "(Private External Symbol)");
+    PRINT_FLAG_EXT(elem->n_type, N_EXT, "(External Symbol)");
+    
     if (elem->n_type == N_UNDF) {
         printf(" N_UNDF(Undefined)");
     }
-    if (elem->n_type & N_ABS) {
-        printf(" N_ABS(Absolute)");
-    }
-    if (elem->n_type & N_INDR) {
-        printf(" N_INDR(Indirect)");
-    }
+    PRINT_FLAG_EXT(elem->n_type, N_ABS, "(Absolute)");
+    PRINT_FLAG_EXT(elem->n_type, N_INDR, "(Indirect)");
+
     fputc('\n', stdout);
     printf("    │ Section Location: ");
     if (elem->n_sect > 0) {
@@ -217,7 +220,10 @@ local void dumo_nlist64_elem(void* buffer, S(nlist_64*) elem) {
     } else {
         printf("NO_SECT\n");
     }
-    printf("  ┌─┘ Description: 0x%04x\n", elem->n_desc);
+    printf("    │ Description: 0x%04x\n", elem->n_desc);
+    const char* symbol = argz_get_string(symtable, elem->n_un.n_strx);
+    printf("  ┌─┘Symbol: offset 0x%016lx: \"%s\"\n", (void*)symbol - buffer,
+           symbol);
     
 }
 
@@ -234,7 +240,7 @@ local void dump_symbol_table(void* buffer, S(symtab_command*) symt) {
     printf("String Table Size: %u byte(s)\n", symt->strsize);
     S(nlist_64*) syms = (void*)((char*)buffer + symt->symoff);
     for (uint32_t i = 0; i < symt->nsyms; i++) {
-        dumo_nlist64_elem(buffer, syms + i);
+        dumo_nlist64_elem(buffer, syms + i, (char*)buffer + symt->stroff);
     }
     printf("┌─┘\n");
 }
