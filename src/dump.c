@@ -192,7 +192,7 @@ local void dump_segment_64(void* buffer, S(segment_command_64*) seg64) {
     char* sections = (void*)(seg64 + 1);
     for (uint32_t i = 0; i < seg64->nsects; i++) {
         S(section_64*) section = (void*)sections;
-        sections += section->size;
+        sections += sizeof(S(section_64));//section->size;
         dump_section_64(buffer, section);
     }
     printf("┌─┘\n");
@@ -239,8 +239,9 @@ local void dump_symbol_table(void* buffer, S(symtab_command*) symt) {
     }
     printf("String Table Size: %u byte(s)\n", symt->strsize);
     S(nlist_64*) syms = (void*)((char*)buffer + symt->symoff);
+    char* strtbl = (char*)buffer + symt->stroff;
     for (uint32_t i = 0; i < symt->nsyms; i++) {
-        dumo_nlist64_elem(buffer, syms + i, (char*)buffer + symt->stroff);
+        dumo_nlist64_elem(buffer, syms + i, strtbl);
     }
     printf("┌─┘\n");
 }

@@ -1,3 +1,7 @@
 *.old
 *.o
 .DS_Store
+machdump.dSYM/Contents/Resources/DWARF/machdump
+machdump.dSYM/Contents/Info.plist
+machdump
+Makefile~
