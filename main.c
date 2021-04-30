@@ -62,9 +62,11 @@ int main(int argc, const char* argv[]) {
         } else if (strncmp(argv[1], "--version", 10) == 0) {
             print_version();
         } else {
-            for (int i = 1; i < argc; i++) {
-                driver(argv[i]);
-            }
+            driver(argv[1]);
+        }
+    } else {
+        for (int i = 1; i < argc; i++) {
+            driver(argv[i]);
         }
     }
 }

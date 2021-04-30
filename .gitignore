@@ -5,3 +5,8 @@ machdump.dSYM/Contents/Resources/DWARF/machdump
 machdump.dSYM/Contents/Info.plist
 machdump
 Makefile~
+simple.dump
+simple
+simple.hex
+simple.s~
+simple.s

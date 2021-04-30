@@ -6,7 +6,7 @@
 
 > NOTE: `machdump` only compiles on MacOS where the Mach-O headers are defined.
 
-Simply give it one or more mach-on files on the command and it will dump each. It also responds to the universal options `--help` and `--version`.
+Simply give it one or more mach-o files on the command and it will dump each. It also responds to the universal options `--help` and `--version`.
 
 ## Usage
 
