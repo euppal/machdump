@@ -10,3 +10,9 @@ simple
 simple.hex
 simple.s~
 simple.s
+times2.s
+symbol.s
+symbol.s~
+times2.s~
+twofn.s
+symbol.dump

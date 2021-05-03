@@ -18,6 +18,7 @@
 #include "safe.h"
 #include "termcolor.h"
 #define printf tcol_printf
+#define fprintf tcol_fprintf
 #include <mach-o/loader.h>
 #include <mach-o/nlist.h>
 
@@ -30,11 +31,13 @@
 #define CONSUME(n) __CUR += (n)
 
 #define PRINT_FLAG(flags, flag) \
-    if ((flags) & (flag)) printf(" " #flag)
+    if ((flags) & (flag)) printf(" {+}" #flag "{0}")
 #define PRINT_FLAG_EXT(flags, flag, extra) \
-    if ((flags) & (flag)) printf(" " #flag extra)
+    if ((flags) & (flag)) printf(" {+}" #flag "{0}" extra)
 #define PRINT_OPTION(value, instance) \
-    if ((value) == (instance)) printf(#value "\n")
+    if ((value) == (instance)) printf("{+}" #instance "{0}\n")
+#define PRINT_OPTION_EXT(value, instance, extra) \
+    if ((value) == (instance)) printf("{+}" #instance "{0}" extra "\n")
 
 #define local static inline
 
@@ -49,52 +52,44 @@ local const char* argz_get_string(const char* start, size_t index) {
 }
 
 local void dump_header(void* buffer, S(mach_header_64)* header) {
-    printf("│ Header\n");
-    printf("└─┐ Magic: 0x%08x\n", header->magic);
+    printf("│ {C}Header{0}: {M+}struct {0}mach_header_64\n");
+    printf("└─┐ Magic: {Y}0x%08x{0}\n", header->magic);
     
-    printf("  │ CPU Type: 0x%08x:", header->cputype);
-    if (header->cputype == CPU_TYPE_ANY) {
-        printf(" CPU_TYPE_ANY");
-    } else if (header->cputype == CPU_TYPE_X86_64) {
-        printf(" CPU_TYPE_X86_64");
-    } else if (header->cputype == CPU_TYPE_POWERPC64) {
-        printf(" CPU_TYPE_POWERPC64");
-    }
-    fputc('\n', stdout);
+    printf("  │ CPU Type: {Y}0x%08x{0}: ", header->cputype);
+    PRINT_OPTION(header->cputype, CPU_TYPE_X86_64);
+    PRINT_OPTION(header->cputype, CPU_TYPE_POWERPC64);
+    PRINT_OPTION(header->cputype, CPU_TYPE_ANY);
     
-    printf("  │ CPU Subtype: 0x%08x:", header->cpusubtype);
-    if (header->cpusubtype == CPU_SUBTYPE_POWERPC_ALL) {
-        printf(" CPU_SUBTYPE_POWERPC_ALL");
-    } else if (header->cpusubtype == CPU_SUBTYPE_X86_64_ALL) {
-        printf(" CPU_SUBTYPE_X86_64_ALL");
-    }
-    fputc('\n', stdout);
+    printf("  │ CPU Subtype: {Y}0x%08x{0}:", header->cpusubtype);
+    PRINT_OPTION(header->cpusubtype, CPU_SUBTYPE_POWERPC_ALL);
+    PRINT_OPTION(header->cpusubtype, CPU_SUBTYPE_X86_64_ALL);
     
-    printf("  │ File Type: 0x%08x: ", header->filetype);
-    if (header->filetype == MH_OBJECT) {
-        printf("MH_OBJECT: Intermediate Object File\n");
-    } else if (header->filetype == MH_EXECUTE) {
-        printf("MH_EXECUTE: Standard Executable Program\n");
-    } else if (header->filetype == MH_BUNDLE) {
-        printf("MH_BUNDLE: Runtime Bundle\n");
-    } else if (header->filetype == MH_DYLIB) {
-        printf("MH_DYLIB: Dynamic Shared Library\n");
-    } else if (header->filetype == MH_PRELOAD) {
-        printf("MH_PRELOAD: Special Executable Program\n");
-    } else if (header->filetype == MH_CORE) {
-        printf("MH_CORE: Core File\n");
-    } else if (header->filetype == MH_DYLINKER) {
-        printf("MH_DYLINKER: Dynamic Linker Shared Library\n");
-    } else if (header->filetype == MH_DSYM) {
-        printf("MH_DSYM: Symbol Information File\n");
-    } else {
+    printf("  │ File Type: {Y}0x%08x{0}: ", header->filetype);
+    PRINT_OPTION_EXT(header->filetype, MH_OBJECT,
+                     ": Intermediate Object File"); else
+    PRINT_OPTION_EXT(header->filetype, MH_EXECUTE,
+                     ": Standard Executable Program"); else
+    PRINT_OPTION_EXT(header->filetype, MH_BUNDLE,
+                     ": Runtime Bundle"); else
+    PRINT_OPTION_EXT(header->filetype, MH_DYLIB,
+                     ": Dynamic Shared Library"); else
+    PRINT_OPTION_EXT(header->filetype, MH_CORE,
+                     ": Core File"); else
+    PRINT_OPTION_EXT(header->filetype, MH_DYLINKER,
+                     ": Dynamic Linker Shared Library"); else
+    PRINT_OPTION_EXT(header->filetype, MH_DSYM,
+                     ": Symbol Information File"); else
+    PRINT_OPTION_EXT(header->filetype, MH_OBJECT,
+                     ": Intermediate Object File"); else
+    PRINT_OPTION_EXT(header->filetype, MH_OBJECT,
+                     ": Intermediate Object File"); else {
         printf("Unknown file type\n");
     }
     
     printf("  │ Number of load commands: %u\n", header->ncmds);
     printf("  │ Size of load commands: %u byte(s)\n", header->sizeofcmds);
 
-    printf("┌─┘ Flags: 0x%08x:", header->flags);
+    printf("┌─┘ Flags: {Y}0x%08x{0}:", header->flags);
     PRINT_FLAG(header->flags, MH_NOUNDEFS);
     PRINT_FLAG(header->flags, MH_INCRLINK);
     PRINT_FLAG(header->flags, MH_DYLDLINK);
@@ -116,7 +111,7 @@ local void dump_header(void* buffer, S(mach_header_64)* header) {
 }
 
 local void dump_section_64(void* buffer, S(section_64*) sec64) {
-    printf("  │ Section 64: struct section_64\n");
+    printf("  │ {C}Section 64{0}: {M+}struct {0}section_64\n");
     printf("  └─┐ Section Name: %.16s\n", sec64->sectname);
     printf("    │ Segment Name: %.16s\n", sec64->segname);
     printf("    │ Virtual Memory Address: 0x%016llx\n", sec64->addr);
@@ -200,29 +195,34 @@ local void dump_segment_64(void* buffer, S(segment_command_64*) seg64) {
 
 local void dumo_nlist64_elem(void* buffer, S(nlist_64*) elem,
                              const char* symtable) {
-    printf("  │ Symbol: struct nlist_64\n");
-    printf("  └─┐ Index in String Table: %u\n", elem->n_un.n_strx);
-    printf("    │ Type: 0x%02x:", elem->n_type);
+    printf("  │ {C}Symbol{0}: {M+}struct {0}nlist_64\n");
+    printf("  └─┐ Offset in String Table: %u\n", elem->n_un.n_strx);
+    printf("    │ Type: {Y}0x%02x{0}:", elem->n_type);
     PRINT_FLAG_EXT(elem->n_type, N_STAB, "(Symbolic Debugging Entry)");
     PRINT_FLAG_EXT(elem->n_type, N_PEXT, "(Private External Symbol)");
     PRINT_FLAG_EXT(elem->n_type, N_EXT, "(External Symbol)");
     
-    if (elem->n_type == N_UNDF) {
-        printf(" N_UNDF(Undefined)");
+    const uint32_t actual_type = (elem->n_type & N_TYPE);
+    fputc(' ', stdout);
+    PRINT_OPTION_EXT(actual_type, N_SECT, "(Defined in Section)"); else
+    PRINT_OPTION_EXT(actual_type, N_INDR, "(Indirect)"); else
+    PRINT_OPTION_EXT(actual_type, N_PBUD, "(Prebound)"); else
+    PRINT_OPTION_EXT(actual_type, N_ABS, "(Absolute)"); else
+    PRINT_OPTION_EXT(actual_type, N_UNDF, "(Undefined)"); else {
+        fputc('\n', stdout);
     }
-    PRINT_FLAG_EXT(elem->n_type, N_ABS, "(Absolute)");
-    PRINT_FLAG_EXT(elem->n_type, N_INDR, "(Indirect)");
 
-    fputc('\n', stdout);
     printf("    │ Section Location: ");
     if (elem->n_sect > 0) {
         printf("%u (from 1)\n", elem->n_sect);
     } else {
         printf("NO_SECT\n");
     }
-    printf("    │ Description: 0x%04x\n", elem->n_desc);
-    const char* symbol = argz_get_string(symtable, elem->n_un.n_strx);
-    printf("  ┌─┘Symbol: offset 0x%016lx: \"%s\"\n", (void*)symbol - buffer,
+    printf("    │ Description: {Y}0x%04x{0}\n", elem->n_desc);
+    printf("    │ Address of Symbol in Assembly: {Y}0x%08x{0}\n",
+           elem->n_value);
+    const char* symbol = symtable + elem->n_un.n_strx;
+    printf("  ┌─┘ String: offset {Y}0x%016lx{0}: {/}\"%s\"{0}\n", (void*)symbol - buffer,
            symbol);
     
 }
@@ -293,21 +293,22 @@ local void dump_build_version(void* buffer, S(build_version_command*) bver) {
 }
 
 local void dump_load_command(void* buffer, S(load_command*) load_command) {
-    printf("│ Load Command (at offset 0x%016lx)\n", (void*)load_command - buffer);
-    printf("└─┐ Command Type: 0x%08x: ", load_command->cmd);
+    printf("│ {C}Load Command{0} (at offset {Y}0x%016lx{0})\n",
+           (void*)load_command - buffer);
+    printf("└─┐ Command Type: {Y}0x%08x{0}: ", load_command->cmd);
     
     if (load_command->cmd == LC_UUID) {
         printf("LC_UUID: struct uuid_command\n");
     } else if (load_command->cmd == LC_SEGMENT) {
         printf("LC_SEGMENT: struct segment_command\n");
     } else if (load_command->cmd == LC_SEGMENT_64) {
-        printf("LC_SEGMENT_64: struct segment_command_64\n");
+        printf("{+}LC_SEGMENT_64{0}: {M+}struct {0}segment_command_64\n");
         dump_segment_64(buffer, (S(segment_command_64*))load_command);
     } else if (load_command->cmd == LC_SYMTAB) {
-        printf("LC_SYMTAB: struct symtab_command\n");
+        printf("{+}LC_SYMTAB{0}: {M+}struct {0}symtab_command\n");
         dump_symbol_table(buffer, (S(symtab_command*))load_command);
     } else if (load_command->cmd == LC_DYSYMTAB) {
-        printf("LC_DYSYMTAB: struct dysymtab_command\n");
+        printf("{+}LC_DYSYMTAB{0}: {M+}struct {0}dysymtab_command\n");
         dump_dysym_table(buffer, (S(dysymtab_command*))load_command);
     } else if (load_command->cmd == LC_THREAD) {
         printf("LC_THREAD: struct thread_command\n");
@@ -350,7 +351,7 @@ local void dump_load_command(void* buffer, S(load_command*) load_command) {
     } else if (load_command->cmd == LC_LAZY_LOAD_DYLIB) {
         printf("LC_LAZY_LOAD_DYLIB\n");
     } else if (load_command->cmd == LC_BUILD_VERSION) {
-        printf("LC_BUILD_VERSION: struct build_version_command\n");
+        printf("{+}LC_BUILD_VERSION{0}: {M+}struct {0}build_version_command\n");
         dump_build_version(buffer, (S(build_version_command*))load_command);
     }
     
@@ -368,6 +369,10 @@ void mach_dump(void* buffer, const size_t length) {
     START_READ();
     
     S(mach_header_64*) header = READ(sizeof(*header));
+    if (header->magic != MH_MAGIC_64) {
+        fprintf(stderr, "machdump: {R+}error:{0} Expected 64 bit mach-o file\n");
+        return;
+    }
     dump_header(buffer, header);
     
     for (uint32_t i = 0; i < header->ncmds; i++) {
