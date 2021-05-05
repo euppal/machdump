@@ -112,16 +112,16 @@ local void dump_header(void* buffer, S(mach_header_64)* header) {
 
 local void dump_section_64(void* buffer, S(section_64*) sec64) {
     printf("  │ {C}Section 64{0}: {M+}struct {0}section_64\n");
-    printf("  └─┐ Section Name: %.16s\n", sec64->sectname);
-    printf("    │ Segment Name: %.16s\n", sec64->segname);
+    printf("  └─┐ Section Name: {/}\"%.16s\"{0}\n", sec64->sectname);
+    printf("    │ Segment Name: {/}\"%.16s\"{0}\n", sec64->segname);
     printf("    │ Virtual Memory Address: 0x%016llx\n", sec64->addr);
     printf("    │ Virtual Memory Size: 0x%016llx\n", sec64->size);
-    printf("    │ File Offset: 0x%08x\n", sec64->offset);
+    printf("    │ File Offset: {Y}0x%08x{0}\n", sec64->offset);
     printf("    │ Section Alignment: 2**%u\n", sec64->align);
-    printf("    │ File offset of first relocation entry: 0x%08x\n",
+    printf("    │ File offset of first relocation entry: {Y}0x%08x{0}\n",
            sec64->reloff);
     printf("    │ Number of first relocation entries: %u\n", sec64->nreloc);
-    printf("    │ Flags: %08x:", sec64->flags);
+    printf("    │ Flags: {Y}0x%08x{0}:", sec64->flags);
     PRINT_FLAG(sec64->flags, S_REGULAR);
     PRINT_FLAG(sec64->flags, S_ZEROFILL);
     PRINT_FLAG(sec64->flags, S_CSTRING_LITERALS);
@@ -162,13 +162,15 @@ local void dump_section_64(void* buffer, S(section_64*) sec64) {
 
 local void dump_segment_64(void* buffer, S(segment_command_64*) seg64) {
     printf("  │ Command Size: %u byte(s)\n", seg64->cmdsize);
-    printf("  │ Segment Name: %.16s\n", seg64->segname);
-    printf("  │ Virtual Memory Address: 0x%016llx\n", seg64->vmaddr);
-    printf("  │ Virtual Memory Size: 0x%016llx\n", seg64->vmsize);
-    printf("  │ File Offset: 0x%016llx\n", seg64->fileoff);
-    printf("  │ File Size: 0x%016llx\n", seg64->filesize);
-    printf("  │ Maximum Virtual Memory Protection: %08x\n", seg64->maxprot);
-    printf("  │ Initial Virtual Memory Protection: %08x\n", seg64->initprot);
+    printf("  │ Segment Name: {/}\"%.16s\"{0}\n", seg64->segname);
+    printf("  │ Virtual Memory Address: {Y}0x%016llx{0}\n", seg64->vmaddr);
+    printf("  │ Virtual Memory Size: {Y}0x%016llx{0}\n", seg64->vmsize);
+    printf("  │ File Offset: {Y}0x%016llx{0}\n", seg64->fileoff);
+    printf("  │ File Size: {Y}0x%016llx{0}\n", seg64->filesize);
+    printf("  │ Maximum Virtual Memory Protection: {Y}%08x{0}\n",
+           seg64->maxprot);
+    printf("  │ Initial Virtual Memory Protection: {Y}%08x{0}\n",
+           seg64->initprot);
     printf("  │ Number of sections: %u\n", seg64->nsects);
     
     if (seg64->nsects > 0) {
@@ -176,7 +178,7 @@ local void dump_segment_64(void* buffer, S(segment_command_64*) seg64) {
     } else {
         printf("┌─┘ ");
     }
-    printf("Flags: %08x:", seg64->flags);
+    printf("Flags: {Y}%08x{0}:", seg64->flags);
     PRINT_FLAG(seg64->flags, SG_HIGHVM);
     PRINT_FLAG(seg64->flags, SG_NORELOC);
     if (seg64->flags == 0) {
@@ -284,10 +286,10 @@ local void dump_dysym_table(void* buffer, S(dysymtab_command*) dsymt) {
 
 local void dump_build_version(void* buffer, S(build_version_command*) bver) {
     printf("  │ Command Size: %u byte(s)\n", bver->cmdsize);
-    printf("  │ Platform: 0x%08x\n", bver->platform);
-    printf("  │ Minimum OS: 0x%08x: %u.%u.%u\n", bver->minos, bver->minos >> 16,
+    printf("  │ Platform: {Y]0x%08x{0}\n", bver->platform);
+    printf("  │ Minimum OS: {Y}0x%08x{0}: %u.%u.%u\n", bver->minos, bver->minos >> 16,
            bver->minos >> 8 & 0xFF, bver->minos & 0xFF);
-    printf("  │ Minimum SDK: 0x%08x: %u.%u.%u\n", bver->sdk, bver->sdk >> 16,
+    printf("  │ Minimum SDK: {Y}0x%08x{0}: %u.%u.%u\n", bver->sdk, bver->sdk >> 16,
            bver->sdk >> 8 & 0xFF, bver->sdk & 0xFF);
     printf("┌─┘ Number of build tools: %u\n", bver->ntools);
 }
