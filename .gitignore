@@ -5,7 +5,6 @@ machdump.dSYM/Contents/Resources/DWARF/machdump
 machdump.dSYM/Contents/Info.plist
 machdump
 Makefile~
-simple.dump
 simple
 simple.hex
 simple.s~
@@ -15,4 +14,4 @@ symbol.s
 symbol.s~
 times2.s~
 twofn.s
-symbol.dump
+*.dump

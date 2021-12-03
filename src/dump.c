@@ -54,16 +54,16 @@ local const char* argz_get_string(const char* start, size_t index) {
 local void dump_header(void* buffer, S(mach_header_64)* header) {
     printf("│ {C}Header{0}: {M+}struct {0}mach_header_64\n");
     printf("└─┐ Magic: {Y}0x%08x{0}\n", header->magic);
-    
+
     printf("  │ CPU Type: {Y}0x%08x{0}: ", header->cputype);
     PRINT_OPTION(header->cputype, CPU_TYPE_X86_64);
     PRINT_OPTION(header->cputype, CPU_TYPE_POWERPC64);
     PRINT_OPTION(header->cputype, CPU_TYPE_ANY);
-    
+
     printf("  │ CPU Subtype: {Y}0x%08x{0}:", header->cpusubtype);
     PRINT_OPTION(header->cpusubtype, CPU_SUBTYPE_POWERPC_ALL);
     PRINT_OPTION(header->cpusubtype, CPU_SUBTYPE_X86_64_ALL);
-    
+
     printf("  │ File Type: {Y}0x%08x{0}: ", header->filetype);
     PRINT_OPTION_EXT(header->filetype, MH_OBJECT,
                      ": Intermediate Object File"); else
@@ -85,7 +85,7 @@ local void dump_header(void* buffer, S(mach_header_64)* header) {
                      ": Intermediate Object File"); else {
         printf("Unknown file type\n");
     }
-    
+
     printf("  │ Number of load commands: %u\n", header->ncmds);
     printf("  │ Size of load commands: %u byte(s)\n", header->sizeofcmds);
 
@@ -167,25 +167,25 @@ local void dump_segment_64(void* buffer, S(segment_command_64*) seg64) {
     printf("  │ Virtual Memory Size: {Y}0x%016llx{0}\n", seg64->vmsize);
     printf("  │ File Offset: {Y}0x%016llx{0}\n", seg64->fileoff);
     printf("  │ File Size: {Y}0x%016llx{0}\n", seg64->filesize);
-    printf("  │ Maximum Virtual Memory Protection: {Y}%08x{0}\n",
+    printf("  │ Maximum Virtual Memory Protection: {Y}0x%08x{0}\n",
            seg64->maxprot);
-    printf("  │ Initial Virtual Memory Protection: {Y}%08x{0}\n",
+    printf("  │ Initial Virtual Memory Protection: {Y}0x%08x{0}\n",
            seg64->initprot);
     printf("  │ Number of sections: %u\n", seg64->nsects);
-    
+
     if (seg64->nsects > 0) {
         printf("  │ ");
     } else {
         printf("┌─┘ ");
     }
-    printf("Flags: {Y}%08x{0}:", seg64->flags);
+    printf("Flags: {Y}0x%08x{0}:", seg64->flags);
     PRINT_FLAG(seg64->flags, SG_HIGHVM);
     PRINT_FLAG(seg64->flags, SG_NORELOC);
     if (seg64->flags == 0) {
         printf(" None");
     }
     fputc('\n', stdout);
-    
+
     char* sections = (void*)(seg64 + 1);
     for (uint32_t i = 0; i < seg64->nsects; i++) {
         S(section_64*) section = (void*)sections;
@@ -203,7 +203,7 @@ local void dumo_nlist64_elem(void* buffer, S(nlist_64*) elem,
     PRINT_FLAG_EXT(elem->n_type, N_STAB, "(Symbolic Debugging Entry)");
     PRINT_FLAG_EXT(elem->n_type, N_PEXT, "(Private External Symbol)");
     PRINT_FLAG_EXT(elem->n_type, N_EXT, "(External Symbol)");
-    
+
     const uint32_t actual_type = (elem->n_type & N_TYPE);
     fputc(' ', stdout);
     PRINT_OPTION_EXT(actual_type, N_SECT, "(Defined in Section)"); else
@@ -226,7 +226,7 @@ local void dumo_nlist64_elem(void* buffer, S(nlist_64*) elem,
     const char* symbol = symtable + elem->n_un.n_strx;
     printf("  ┌─┘ String: offset {Y}0x%016lx{0}: {/}\"%s\"{0}\n", (void*)symbol - buffer,
            symbol);
-    
+
 }
 
 local void dump_symbol_table(void* buffer, S(symtab_command*) symt) {
@@ -298,7 +298,7 @@ local void dump_load_command(void* buffer, S(load_command*) load_command) {
     printf("│ {C}Load Command{0} (at offset {Y}0x%016lx{0})\n",
            (void*)load_command - buffer);
     printf("└─┐ Command Type: {Y}0x%08x{0}: ", load_command->cmd);
-    
+
     if (load_command->cmd == LC_UUID) {
         printf("LC_UUID: struct uuid_command\n");
     } else if (load_command->cmd == LC_SEGMENT) {
@@ -356,7 +356,7 @@ local void dump_load_command(void* buffer, S(load_command*) load_command) {
         printf("{+}LC_BUILD_VERSION{0}: {M+}struct {0}build_version_command\n");
         dump_build_version(buffer, (S(build_version_command*))load_command);
     }
-    
+
     #ifdef LC_SYMSEG
     else if (load_command->cmd == LC_SYMSEG) {
         printf("LC_SYMSEG: struct symseg_command\n");
@@ -369,14 +369,14 @@ local void dump_load_command(void* buffer, S(load_command*) load_command) {
 
 void mach_dump(void* buffer, const size_t length) {
     START_READ();
-    
+
     S(mach_header_64*) header = READ(sizeof(*header));
     if (header->magic != MH_MAGIC_64) {
         fprintf(stderr, "machdump: {R+}error:{0} Expected 64 bit mach-o file\n");
         return;
     }
     dump_header(buffer, header);
-    
+
     for (uint32_t i = 0; i < header->ncmds; i++) {
         S(load_command*) load_command = READ(sizeof(*load_command));
         CONSUME(load_command->cmdsize - sizeof(*load_command));
