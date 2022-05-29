@@ -2,7 +2,7 @@
 
 ![machdump in action](/img/example.png)
 
-`machdump` is a tool to verbatim dump Mach-O object files for low-level debugging. I wrote it to aid in development for my language _chrona_.
+`machdump` is a tool to verbatim dump Mach-O object files for low-level debugging. I wrote it in the hope that it will be useful for people who unfortunately must use Apple software. 
 
 > NOTE: `machdump` only compiles on MacOS where the Mach-O headers are defined.
 
